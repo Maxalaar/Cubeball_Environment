@@ -19,10 +19,9 @@ def get_free_port():
     s.close()
     return port
 
-
 # https://github.com/edbeeching/godot_rl_agents_examples
 # https://github.com/edbeeching/godot_rl_agents/blob/main/docs/TRAINING_MULTIPLE_POLICIES.md
-class Gogot(MultiAgentEnv):
+class Cubeball(MultiAgentEnv):
     def __init__(self, environment_configuration: Optional[dict] = None):
         super().__init__()
 
@@ -31,7 +30,8 @@ class Gogot(MultiAgentEnv):
             environment_configuration["speedup"] = 1.0
 
         self.environment: GodotEnv = GodotEnv(
-            env_path=environment_configuration["env_path"],
+            env_path="cubeball_godot/Cubeball.x86_64",
+            # env_path="super_slime_volley_godot/Super_Slime_Volley.x86_64",
             port=get_free_port(),
             show_window=environment_configuration["show_window"],
             action_repeat=environment_configuration["action_repeat"],
