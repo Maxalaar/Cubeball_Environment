@@ -1,0 +1,5 @@
+gymnasium
+ray[rllib]
+godot-rl
+torch
+numpy

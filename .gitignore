@@ -1,0 +1,18 @@
+# Exported Godot game build (generated artifact, not source)
+cubeball_godot/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Ray / RLlib run outputs
+ray_results/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
