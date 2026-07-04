@@ -8,4 +8,4 @@ set -euo pipefail
 ENV_NAME="CubeballEnvironment"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-conda-shell -c "conda run -n ${ENV_NAME} --no-capture-output pip install -r '${SCRIPT_DIR}/requirements.txt'"
+conda-shell -c "conda run -n ${ENV_NAME} --no-capture-output pip install -e '${SCRIPT_DIR}'"

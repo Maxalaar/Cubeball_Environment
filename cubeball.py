@@ -1,4 +1,5 @@
 import socket
+from pathlib import Path
 from typing import Optional
 import gymnasium as gym
 import numpy as np
@@ -10,6 +11,8 @@ try:
     from godot_rl.wrappers.ray_wrapper import RayVectorGodotEnv
 except ImportError:
     print('Godot RL is not installed.')
+
+GAME_EXECUTABLE_PATH = str(Path(__file__).parent / "cubeball_godot" / "Cubeball.x86_64")
 
 
 def get_free_port():
@@ -30,8 +33,7 @@ class Cubeball(MultiAgentEnv):
             environment_configuration["speedup"] = 1.0
 
         self.environment: GodotEnv = GodotEnv(
-            env_path="cubeball_godot/Cubeball.x86_64",
-            # env_path="super_slime_volley_godot/Super_Slime_Volley.x86_64",
+            env_path=GAME_EXECUTABLE_PATH,
             port=get_free_port(),
             show_window=environment_configuration["show_window"],
             action_repeat=environment_configuration["action_repeat"],
@@ -118,11 +120,15 @@ class Cubeball(MultiAgentEnv):
     def process_dones(self, dones):
         if not self.use_real_godot_done:
             dones = [False for _ in range(len(self.possible_agents))]
-        return dict(zip(self.possible_agents, dones))
+        dones_dict = dict(zip(self.possible_agents, dones))
+        dones_dict['__all__'] = all(dones)
+        return dones_dict
 
     def dones_for_all(self):
         dones = [True for _ in range(len(self.possible_agents))]
-        return dict(zip(self.possible_agents, dones))
+        dones_dict = dict(zip(self.possible_agents, dones))
+        dones_dict['__all__'] = True
+        return dones_dict
 
     def process_truncates(self, truncates):
         truncates = [False for _ in range(len(self.possible_agents))]
