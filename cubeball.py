@@ -48,13 +48,14 @@ class Cubeball(MultiAgentEnv):
         self.action_spaces = {}
 
         for i, agent_policy_name in enumerate(self.environment.agent_policy_names):
-            self.agents.append(agent_policy_name)
-            self.possible_agents.append(agent_policy_name)
+            agent_id = f"{agent_policy_name}_{i}"
+            self.agents.append(agent_id)
+            self.possible_agents.append(agent_id)
 
-            self.real_observation_spaces[agent_policy_name] = self.environment.observation_spaces[i]
-            self.observation_spaces[agent_policy_name] = flatten_space(self.environment.observation_spaces[i])
+            self.real_observation_spaces[agent_id] = self.environment.observation_spaces[i]
+            self.observation_spaces[agent_id] = flatten_space(self.environment.observation_spaces[i])
 
-            self.action_spaces[agent_policy_name] = self.environment.action_spaces[i]
+            self.action_spaces[agent_id] = self.environment.action_spaces[i]
 
         self.use_real_godot_done: float = environment_configuration.get('use_real_godot_done', True)
         self.reward_scale_factor: float = environment_configuration.get('reward_scale_factor', 1.0)
