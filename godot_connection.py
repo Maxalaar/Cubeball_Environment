@@ -58,7 +58,10 @@ class CubeballConnection:
         return self._receive()
 
     def close(self) -> None:
-        self._send({"type": "close"})
+        try:
+            self._send({"type": "close"})
+        except OSError:
+            pass  # Godot's end (e.g. the game window) may already be gone.
         self.connection.close()
         atexit.unregister(self.close)
 
@@ -73,7 +76,10 @@ class CubeballConnection:
     def _receive_exactly(self, size: int) -> bytes:
         buffer = bytearray()
         while len(buffer) < size:
-            buffer.extend(self.connection.recv(size - len(buffer)))
+            chunk = self.connection.recv(size - len(buffer))
+            if not chunk:
+                raise ConnectionError("Godot closed the connection (game window closed?)")
+            buffer.extend(chunk)
         return bytes(buffer)
 
 

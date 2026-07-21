@@ -48,6 +48,8 @@ def main() -> None:
                 done = all(dones.values())
     except KeyboardInterrupt:
         pass
+    except ConnectionError:
+        print("Godot window closed, exiting.")
     finally:
         environment.close()
 
