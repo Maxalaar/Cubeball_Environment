@@ -3,7 +3,6 @@ from typing import Optional
 import gymnasium as gym
 import numpy as np
 from ray.rllib import MultiAgentEnv
-from gymnasium.spaces.utils import flatten_space
 
 from game_mode import GameModeRange
 from godot_connection import CubeballConnection, get_free_port
@@ -73,12 +72,9 @@ class Cubeball(MultiAgentEnv):
         self.agents = list(self.possible_agents)
         self.agent_policy_names: dict = spaces_reply["agent_policy_names"]
 
-        self.real_observation_spaces = {
+        self.observation_spaces = {
             agent_id: build_observation_space(schema)
             for agent_id, schema in spaces_reply["observation_space"].items()
-        }
-        self.observation_spaces = {
-            agent_id: flatten_space(space) for agent_id, space in self.real_observation_spaces.items()
         }
         self.action_spaces = {
             agent_id: build_action_space(schema) for agent_id, schema in spaces_reply["action_space"].items()
@@ -107,10 +103,10 @@ class Cubeball(MultiAgentEnv):
         else:
             reply = self.connection.reset(self.game_mode_range.sample(self._rng).to_config())
 
-        self.agents = list(reply["obs"].keys())
+        self.agents = list(reply["observation"].keys())
         self.current_step = 0
 
-        observation = self.process_observations(reply["obs"])
+        observation = self.process_observations(reply["observation"])
         information = {agent_id: {} for agent_id in self.agents}
         return observation, information
 
@@ -118,7 +114,7 @@ class Cubeball(MultiAgentEnv):
         self.current_step += 1
 
         reply = self.connection.step(self.process_actions(action_dict))
-        observation = self.process_observations(reply["obs"])
+        observation = self.process_observations(reply["observation"])
         reward = self.process_rewards(reply["reward"])
         done = self.process_dones(reply["done"])
         truncated = self.process_truncates()
@@ -134,19 +130,40 @@ class Cubeball(MultiAgentEnv):
 
     def process_observations(self, observations: dict) -> dict:
         return {
-            agent_id: gym.spaces.utils.flatten(self.real_observation_spaces[agent_id], observation)
+            agent_id: self._cast_observation(self.observation_spaces[agent_id], observation)
             for agent_id, observation in observations.items()
         }
 
+    @staticmethod
+    def _cast_observation(space: gym.spaces.Dict, observation: dict) -> dict:
+        casted = {}
+        for key, sub_space in space.spaces.items():
+            if isinstance(sub_space, gym.spaces.Box):
+                casted[key] = np.array(observation[key], dtype=sub_space.dtype)
+            elif isinstance(sub_space, gym.spaces.Discrete):
+                casted[key] = int(observation[key])
+            else:
+                raise ValueError(f"Unsupported observation space kind: {sub_space!r}")
+        return casted
+
     def process_actions(self, action_dict: dict) -> dict:
         return {
-            agent_id: {
-                key: value.tolist() if isinstance(value, np.ndarray) else int(value)
-                for key, value in action.items()
-            }
+            agent_id: self._cast_action(self.action_spaces[agent_id], action)
             for agent_id, action in action_dict.items()
             if agent_id in self.agents
         }
+
+    @staticmethod
+    def _cast_action(space: gym.spaces.Dict, action: dict) -> dict:
+        casted = {}
+        for key, sub_space in space.spaces.items():
+            if isinstance(sub_space, gym.spaces.Box):
+                casted[key] = np.asarray(action[key]).tolist()
+            elif isinstance(sub_space, gym.spaces.Discrete):
+                casted[key] = int(action[key])
+            else:
+                raise ValueError(f"Unsupported action space kind: {sub_space!r}")
+        return casted
 
     def process_rewards(self, rewards: dict) -> dict:
         return {agent_id: reward * self.reward_scale_factor for agent_id, reward in rewards.items()}
