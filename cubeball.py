@@ -53,17 +53,6 @@ class Cubeball(MultiAgentEnv):
         self.game_mode_range: GameModeRange = environment_configuration["game_mode_range"]
         self._rng = np.random.default_rng(environment_configuration.get("seed"))
 
-        # The maximum roster per team — the universe of agent IDs Gymnasium/RLlib needs
-        # to know about upfront, purely a local Python concept derived from
-        # game_mode_range.team_list (the per-episode *active* count within it is
-        # whatever GameMode.sample() draws, which Godot actually spawns).
-        self.possible_agents = [
-            f"team{team_index}_{slot_index}"
-            for team_index, max_count in enumerate(self.game_mode_range.max_players_per_team)
-            for slot_index in range(max_count)
-        ]
-        self.agents = list(self.possible_agents)
-
         self.connection = CubeballConnection(
             env_path=GAME_EXECUTABLE_PATH,
             port=get_free_port(),
@@ -73,22 +62,32 @@ class Cubeball(MultiAgentEnv):
             debug_logs=environment_configuration.get("debug_logs", False),
         )
 
-        # Constructing the env performs the first episode's reset over the wire, since
-        # the observation/action space schema (needed before __init__ returns — Ray
-        # inspects self.observation_space/self.action_space right after construction)
-        # only comes from Godot, and Godot only reports it as part of a reset reply.
-        # The user's first explicit .reset() call reuses this cached reply instead of
+        # Godot reports the observation/action space of every possible agent_id in one
+        # dedicated exchange, using the largest roster the range can ever produce (every
+        # team at max_players_per_team) — decoupled from any actual episode, so no
+        # agent_id is ever missing regardless of what a given episode samples. Godot is
+        # the sole source of truth for agent_id naming; possible_agents just mirrors it.
+        spaces_reply = self.connection.get_spaces(self.game_mode_range.max_game_mode().to_config())
+
+        self.possible_agents = sorted(spaces_reply["observation_space"].keys())
+        self.agents = list(self.possible_agents)
+        self.agent_policy_names: dict = spaces_reply["agent_policy_names"]
+
+        self.real_observation_spaces = {
+            agent_id: build_observation_space(schema)
+            for agent_id, schema in spaces_reply["observation_space"].items()
+        }
+        self.observation_spaces = {
+            agent_id: flatten_space(space) for agent_id, space in self.real_observation_spaces.items()
+        }
+        self.action_spaces = {
+            agent_id: build_action_space(schema) for agent_id, schema in spaces_reply["action_space"].items()
+        }
+
+        # Constructing the env performs the first episode's reset over the wire — the
+        # user's first explicit .reset() call reuses this cached reply instead of
         # starting a second match.
         self._pending_reset_reply = self.connection.reset(self.game_mode_range.sample(self._rng).to_config())
-
-        self.agent_policy_names: dict = self._pending_reset_reply["agent_policy_names"]
-        shared_observation_space = build_observation_space(self._pending_reset_reply["observation_space"])
-        shared_action_space = build_action_space(self._pending_reset_reply["action_space"])
-        flat_observation_space = flatten_space(shared_observation_space)
-
-        self.real_observation_spaces = {agent_id: shared_observation_space for agent_id in self.possible_agents}
-        self.observation_spaces = {agent_id: flat_observation_space for agent_id in self.possible_agents}
-        self.action_spaces = {agent_id: shared_action_space for agent_id in self.possible_agents}
 
         self.use_real_godot_done: float = environment_configuration.get('use_real_godot_done', True)
         self.reward_scale_factor: float = environment_configuration.get('reward_scale_factor', 1.0)

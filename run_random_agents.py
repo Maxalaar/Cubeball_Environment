@@ -14,7 +14,7 @@ def main() -> None:
     environment_configuration = {
         # "render_mode": "human",
         "show_window": True,
-        "action_repeat": 40,
+        "action_repeat": 20,
         "speedup": 1.0,
         "debug_logs": True,
         # Domain randomization: a fresh GameMode is sampled from this every episode
@@ -24,8 +24,7 @@ def main() -> None:
             level_size=((10, 4, 15), (20, 4, 30)),
             goal_size=((3, 4, 5), (3, 4, 5)),
             ball_number=(1, 2),
-            obstacle_number_min=(0, 0),
-            obstacle_number_max=(0, 0),
+            obstacle_number=(0, 0),
             max_duration_seconds=(10, 20),
             max_goal=(1, 1),
             team_list=[

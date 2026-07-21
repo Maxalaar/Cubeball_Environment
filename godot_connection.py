@@ -9,10 +9,9 @@ MINOR_VERSION = "7"
 
 class CubeballConnection:
     # A small, self-contained client for the training wire protocol implemented by
-    # addons/godot_rl_agents/agent_synchronizer.gd in the Godot project: JSON messages,
-    # each prefixed by its length as 4 little-endian bytes. Every episode (including
-    # the first) is a "reset" message carrying a config payload — Godot doesn't build
-    # anything until it receives one, so there's exactly one way this ever talks to it.
+    # addons/godot_rl_agents/python_synchronizer.gd in the Godot project: JSON messages,
+    # each prefixed by its length as 4 little-endian bytes. Godot doesn't build anything
+    # until it receives a message carrying a config payload ("get_spaces" or "reset").
     def __init__(
         self,
         env_path: str,
@@ -45,6 +44,10 @@ class CubeballConnection:
         self.connection, _ = server_socket.accept()
 
         self._send({"type": "handshake", "major_version": MAJOR_VERSION, "minor_version": MINOR_VERSION})
+
+    def get_spaces(self, config: dict) -> dict:
+        self._send({"type": "get_spaces", "config": config})
+        return self._receive()
 
     def reset(self, config: dict) -> dict:
         self._send({"type": "reset", "config": config})
