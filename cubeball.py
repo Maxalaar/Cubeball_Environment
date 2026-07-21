@@ -1,4 +1,3 @@
-import socket
 from pathlib import Path
 from typing import Optional
 import gymnasium as gym
@@ -6,24 +5,43 @@ import numpy as np
 from ray.rllib import MultiAgentEnv
 from gymnasium.spaces.utils import flatten_space
 
-try:
-    from godot_rl.core.godot_env import GodotEnv
-    from godot_rl.wrappers.ray_wrapper import RayVectorGodotEnv
-except ImportError:
-    print('Godot RL is not installed.')
+from game_mode import GameModeRange
+from godot_connection import CubeballConnection, get_free_port
 
 GAME_EXECUTABLE_PATH = str(Path(__file__).parent / "cubeball_godot" / "Cubeball.x86_64")
 
 
-def get_free_port():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+def build_observation_space(schema: dict) -> gym.spaces.Dict:
+    spaces_by_key = {}
 
-# https://github.com/edbeeching/godot_rl_agents_examples
-# https://github.com/edbeeching/godot_rl_agents/blob/main/docs/TRAINING_MULTIPLE_POLICIES.md
+    for key, value in schema.items():
+        if value["space"] == "box":
+            if "2d" in key:
+                spaces_by_key[key] = gym.spaces.Box(low=0, high=255, shape=value["size"], dtype=np.uint8)
+            else:
+                spaces_by_key[key] = gym.spaces.Box(low=-1.0, high=1.0, shape=value["size"], dtype=np.float32)
+        elif value["space"] == "discrete":
+            spaces_by_key[key] = gym.spaces.Discrete(value["size"])
+        else:
+            raise ValueError(f"Unsupported observation space kind: {value['space']!r}")
+
+    return gym.spaces.Dict(spaces_by_key)
+
+
+def build_action_space(schema: dict) -> gym.spaces.Dict:
+    spaces_by_key = {}
+
+    for key, value in schema.items():
+        if value["action_type"] == "discrete":
+            spaces_by_key[key] = gym.spaces.Discrete(value["size"])
+        elif value["action_type"] == "continuous":
+            spaces_by_key[key] = gym.spaces.Box(low=-1.0, high=1.0, shape=(value["size"],))
+        else:
+            raise ValueError(f"Unsupported action type: {value['action_type']!r}")
+
+    return gym.spaces.Dict(spaces_by_key)
+
+
 class Cubeball(MultiAgentEnv):
     def __init__(self, environment_configuration: Optional[dict] = None):
         super().__init__()
@@ -32,30 +50,45 @@ class Cubeball(MultiAgentEnv):
             environment_configuration["show_window"] = True
             environment_configuration["speedup"] = 1.0
 
-        self.environment: GodotEnv = GodotEnv(
+        self.game_mode_range: GameModeRange = environment_configuration["game_mode_range"]
+        self._rng = np.random.default_rng(environment_configuration.get("seed"))
+
+        # The maximum roster per team — the universe of agent IDs Gymnasium/RLlib needs
+        # to know about upfront, purely a local Python concept derived from
+        # game_mode_range.team_list (the per-episode *active* count within it is
+        # whatever GameMode.sample() draws, which Godot actually spawns).
+        self.possible_agents = [
+            f"team{team_index}_{slot_index}"
+            for team_index, max_count in enumerate(self.game_mode_range.max_players_per_team)
+            for slot_index in range(max_count)
+        ]
+        self.agents = list(self.possible_agents)
+
+        self.connection = CubeballConnection(
             env_path=GAME_EXECUTABLE_PATH,
             port=get_free_port(),
             show_window=environment_configuration["show_window"],
             action_repeat=environment_configuration["action_repeat"],
             speedup=environment_configuration["speedup"],
+            debug_logs=environment_configuration.get("debug_logs", False),
         )
-        print('Policy names: ' + str(self.environment.agent_policy_names))
 
-        self.agents = []
-        self.possible_agents = []
-        self.real_observation_spaces = {}
-        self.observation_spaces = {}
-        self.action_spaces = {}
+        # Constructing the env performs the first episode's reset over the wire, since
+        # the observation/action space schema (needed before __init__ returns — Ray
+        # inspects self.observation_space/self.action_space right after construction)
+        # only comes from Godot, and Godot only reports it as part of a reset reply.
+        # The user's first explicit .reset() call reuses this cached reply instead of
+        # starting a second match.
+        self._pending_reset_reply = self.connection.reset(self.game_mode_range.sample(self._rng).to_config())
 
-        for i, agent_policy_name in enumerate(self.environment.agent_policy_names):
-            agent_id = f"{agent_policy_name}_{i}"
-            self.agents.append(agent_id)
-            self.possible_agents.append(agent_id)
+        self.agent_policy_names: dict = self._pending_reset_reply["agent_policy_names"]
+        shared_observation_space = build_observation_space(self._pending_reset_reply["observation_space"])
+        shared_action_space = build_action_space(self._pending_reset_reply["action_space"])
+        flat_observation_space = flatten_space(shared_observation_space)
 
-            self.real_observation_spaces[agent_id] = self.environment.observation_spaces[i]
-            self.observation_spaces[agent_id] = flatten_space(self.environment.observation_spaces[i])
-
-            self.action_spaces[agent_id] = self.environment.action_spaces[i]
+        self.real_observation_spaces = {agent_id: shared_observation_space for agent_id in self.possible_agents}
+        self.observation_spaces = {agent_id: flat_observation_space for agent_id in self.possible_agents}
+        self.action_spaces = {agent_id: shared_action_space for agent_id in self.possible_agents}
 
         self.use_real_godot_done: float = environment_configuration.get('use_real_godot_done', True)
         self.reward_scale_factor: float = environment_configuration.get('reward_scale_factor', 1.0)
@@ -66,22 +99,31 @@ class Cubeball(MultiAgentEnv):
         self.action_space = gym.spaces.Dict(self.action_spaces)
 
     def reset(self, seed=None, options=None):
-        observation, information = self.environment.reset(seed=seed)
+        if seed is not None:
+            self._rng = np.random.default_rng(seed)
+
+        if self._pending_reset_reply is not None:
+            reply = self._pending_reset_reply
+            self._pending_reset_reply = None
+        else:
+            reply = self.connection.reset(self.game_mode_range.sample(self._rng).to_config())
+
+        self.agents = list(reply["obs"].keys())
         self.current_step = 0
-        observation = self.process_observations(observation)
-        information = self.process_information(information)
+
+        observation = self.process_observations(reply["obs"])
+        information = {agent_id: {} for agent_id in self.agents}
         return observation, information
 
     def step(self, action_dict):
         self.current_step += 1
 
-        actions = self.process_actions(action_dict)
-        observation, reward, done, truncated, information = self.environment.step(actions, order_ij=True)
-        observation = self.process_observations(observation)
-        reward = self.process_rewards(reward)
-        done = self.process_dones(done)
-        truncated = self.process_truncates(truncated)
-        information = self.process_information(information)
+        reply = self.connection.step(self.process_actions(action_dict))
+        observation = self.process_observations(reply["obs"])
+        reward = self.process_rewards(reply["reward"])
+        done = self.process_dones(reply["done"])
+        truncated = self.process_truncates()
+        information = {agent_id: {} for agent_id in self.agents}
 
         if self.max_step is not None and self.current_step >= self.max_step:
             done = self.dones_for_all()
@@ -89,48 +131,38 @@ class Cubeball(MultiAgentEnv):
         return observation, reward, done, truncated, information
 
     def close(self):
-        self.environment.close()
+        self.connection.close()
 
-    def process_observations(self, observations):
-        new_observations = []
+    def process_observations(self, observations: dict) -> dict:
+        return {
+            agent_id: gym.spaces.utils.flatten(self.real_observation_spaces[agent_id], observation)
+            for agent_id, observation in observations.items()
+        }
 
-        for i, observation in enumerate(observations):
-            agent_name = self.possible_agents[i]
-            new_observation = gym.spaces.utils.flatten(self.real_observation_spaces[agent_name], observation)
-            new_observations.append(new_observation)
+    def process_actions(self, action_dict: dict) -> dict:
+        return {
+            agent_id: {
+                key: value.tolist() if isinstance(value, np.ndarray) else int(value)
+                for key, value in action.items()
+            }
+            for agent_id, action in action_dict.items()
+            if agent_id in self.agents
+        }
 
-        return dict(zip(self.possible_agents, new_observations))
+    def process_rewards(self, rewards: dict) -> dict:
+        return {agent_id: reward * self.reward_scale_factor for agent_id, reward in rewards.items()}
 
-    def process_information(self, information):
-        return dict(zip(self.possible_agents, information))
-
-    def process_actions(self, action_dict):
-        new_actions = []
-
-        for agent_name in self.agents:
-            if agent_name in action_dict.keys():
-                new_action = list(action_dict[agent_name].values())
-                new_actions.append(new_action)
-
-        return new_actions
-
-    def process_rewards(self, rewards):
-        rewards = np.array(rewards) * self.reward_scale_factor
-        return dict(zip(self.possible_agents, rewards))
-
-    def process_dones(self, dones):
+    def process_dones(self, dones: dict) -> dict:
         if not self.use_real_godot_done:
-            dones = [False for _ in range(len(self.possible_agents))]
-        dones_dict = dict(zip(self.possible_agents, dones))
-        dones_dict['__all__'] = all(dones)
+            dones = {agent_id: False for agent_id in dones}
+        dones_dict = dict(dones)
+        dones_dict['__all__'] = all(dones.values())
         return dones_dict
 
     def dones_for_all(self):
-        dones = [True for _ in range(len(self.possible_agents))]
-        dones_dict = dict(zip(self.possible_agents, dones))
+        dones_dict = {agent_id: True for agent_id in self.agents}
         dones_dict['__all__'] = True
         return dones_dict
 
-    def process_truncates(self, truncates):
-        truncates = [False for _ in range(len(self.possible_agents))]
-        return dict(zip(self.possible_agents, truncates))
+    def process_truncates(self) -> dict:
+        return {agent_id: False for agent_id in self.agents}

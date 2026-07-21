@@ -10,10 +10,9 @@ requires-python = ">=3.10"
 dependencies = [
     "gymnasium",
     "ray[rllib]",
-    "godot-rl",
     "torch",
     "numpy",
 ]
 
 [tool.setuptools]
-py-modules = ["cubeball"]
+py-modules = ["cubeball", "game_mode", "godot_connection"]

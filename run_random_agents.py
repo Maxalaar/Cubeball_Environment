@@ -1,5 +1,6 @@
 from pathlib import Path
 from cubeball import Cubeball
+from game_mode import GameModeRange, GameModeTeamRange
 
 
 def sample_random_actions(environment: Cubeball) -> dict:
@@ -15,6 +16,23 @@ def main() -> None:
         "show_window": True,
         "action_repeat": 40,
         "speedup": 1.0,
+        "debug_logs": True,
+        # Domain randomization: a fresh GameMode is sampled from this every episode
+        # (see Cubeball.reset / GameModeRange.sample). A fixed value is just a
+        # degenerate range, e.g. max_goal=(1, 1).
+        "game_mode_range": GameModeRange(
+            level_size=((10, 4, 15), (20, 4, 30)),
+            goal_size=((3, 4, 5), (3, 4, 5)),
+            ball_number=(1, 2),
+            obstacle_number_min=(0, 0),
+            obstacle_number_max=(0, 0),
+            max_duration_seconds=(10, 20),
+            max_goal=(1, 1),
+            team_list=[
+                GameModeTeamRange(players_number=(1, 3)),
+                GameModeTeamRange(players_number=(1, 3)),
+            ],
+        ),
     }
 
     environment = Cubeball(environment_configuration)
@@ -22,6 +40,7 @@ def main() -> None:
     try:
         while True:
             environment.reset()
+            print("Active agents this episode:", environment.agents)
             done = False
 
             while not done:
