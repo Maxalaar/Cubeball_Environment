@@ -14,11 +14,8 @@ def build_observation_space(schema: dict) -> gym.spaces.Dict:
     spaces_by_key = {}
 
     for key, value in schema.items():
-        if value["space"] == "box":
-            if "2d" in key:
-                spaces_by_key[key] = gym.spaces.Box(low=0, high=255, shape=value["size"], dtype=np.uint8)
-            else:
-                spaces_by_key[key] = gym.spaces.Box(low=-1.0, high=1.0, shape=value["size"], dtype=np.float32)
+        if value["space"] == "continuous":
+            spaces_by_key[key] = gym.spaces.Box(low=-1.0, high=1.0, shape=(value["size"],), dtype=np.float32)
         elif value["space"] == "discrete":
             spaces_by_key[key] = gym.spaces.Discrete(value["size"])
         else:
