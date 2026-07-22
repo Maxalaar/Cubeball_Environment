@@ -24,6 +24,7 @@ def main() -> None:
         "game_mode_range": GameModeRange(
             level_size=((10, 4, 15), (20, 4, 30)),
             goal_size=((3, 4, 5), (3, 4, 5)),
+            cuboid_field_margin=((0, 0, 0), (0, 0, 0)),
             ball_number=(1, 2),
             obstacle_number=(0, 0),
             max_duration_seconds=(10, 20),

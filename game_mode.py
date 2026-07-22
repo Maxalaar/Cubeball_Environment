@@ -30,6 +30,7 @@ class GameModeTeam:
 class GameMode:
     level_size: Vector3
     goal_size: Vector3
+    cuboid_field_margin: Vector3
     ball_number: int
     obstacle_number: int
     max_duration_seconds: float
@@ -40,6 +41,7 @@ class GameMode:
         return {
             "level_size": list(self.level_size),
             "goal_size": list(self.goal_size),
+            "cuboid_field_margin": list(self.cuboid_field_margin),
             "ball_number": self.ball_number,
             "obstacle_number": self.obstacle_number,
             "max_duration_seconds": self.max_duration_seconds,
@@ -84,6 +86,7 @@ class GameModeTeamRange:
 class GameModeRange:
     level_size: tuple[Vector3, Vector3]
     goal_size: tuple[Vector3, Vector3]
+    cuboid_field_margin: tuple[Vector3, Vector3]
     ball_number: tuple[int, int]
     obstacle_number: tuple[int, int]
     max_duration_seconds: tuple[float, float]
@@ -94,6 +97,9 @@ class GameModeRange:
         return GameMode(
             level_size=tuple(float(rng.uniform(low, high)) for low, high in zip(*self.level_size)),
             goal_size=tuple(float(rng.uniform(low, high)) for low, high in zip(*self.goal_size)),
+            cuboid_field_margin=tuple(
+                float(rng.uniform(low, high)) for low, high in zip(*self.cuboid_field_margin)
+            ),
             ball_number=int(rng.integers(self.ball_number[0], self.ball_number[1] + 1)),
             obstacle_number=int(rng.integers(self.obstacle_number[0], self.obstacle_number[1] + 1)),
             max_duration_seconds=float(rng.uniform(*self.max_duration_seconds)),
@@ -108,6 +114,7 @@ class GameModeRange:
         return GameMode(
             level_size=self.level_size[1],
             goal_size=self.goal_size[1],
+            cuboid_field_margin=self.cuboid_field_margin[1],
             ball_number=self.ball_number[1],
             obstacle_number=self.obstacle_number[1],
             max_duration_seconds=self.max_duration_seconds[1],
