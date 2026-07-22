@@ -1,10 +1,18 @@
 import atexit
+import ctypes
 import json
+import signal
 import socket
 import subprocess
 
 MAJOR_VERSION = "0"
 MINOR_VERSION = "7"
+
+_PR_SET_PDEATHSIG = 1
+
+
+def _die_with_parent():
+    ctypes.CDLL("libc.so.6", use_errno=True).prctl(_PR_SET_PDEATHSIG, signal.SIGKILL)
 
 
 class CubeballConnection:
@@ -33,7 +41,7 @@ class CubeballConnection:
         if not show_window:
             launch_command += ["--disable-render-loop", "--headless"]
 
-        self.process = subprocess.Popen(launch_command, start_new_session=True)
+        self.process = subprocess.Popen(launch_command, start_new_session=True, preexec_fn=_die_with_parent)
         atexit.register(self.close)
 
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
