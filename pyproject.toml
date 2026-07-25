@@ -15,4 +15,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-py-modules = ["cubeball", "game_mode", "godot_connection"]
+packages = ["cubeball", "cubeball.reward_functions"]

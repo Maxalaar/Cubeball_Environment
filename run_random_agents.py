@@ -1,6 +1,5 @@
-from pathlib import Path
-from cubeball import Cubeball
-from game_mode import GameModeRange, GameModeTeamRange
+from cubeball import Cubeball, GameModeRange, GameModeTeamRange
+from cubeball.reward_functions import GoalAndBallProximity
 
 
 def sample_random_actions(environment: Cubeball) -> dict:
@@ -12,14 +11,11 @@ def sample_random_actions(environment: Cubeball) -> dict:
 
 def main() -> None:
     environment_configuration = {
-        # "render_mode": "human",
         "show_window": True,
         "action_repeat": 8,
         "speedup": 1.0,
         "debug_logs": True,
-        # Domain randomization: a fresh GameMode is sampled from this every episode
-        # (see Cubeball.reset / GameModeRange.sample). A fixed value is just a
-        # degenerate range, e.g. max_goal=(1, 1).
+        "reward_function": GoalAndBallProximity(shaping_cap=0.2),
 
         "game_mode_range": GameModeRange(
             level_size=((10, 4, 15), (20, 4, 30)),

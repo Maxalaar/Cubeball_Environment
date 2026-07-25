@@ -6,7 +6,7 @@ import socket
 import subprocess
 
 MAJOR_VERSION = "0"
-MINOR_VERSION = "7"
+MINOR_VERSION = "8"
 
 _PR_SET_PDEATHSIG = 1
 
