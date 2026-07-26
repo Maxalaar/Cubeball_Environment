@@ -1,5 +1,5 @@
 from cubeball import Cubeball, GameModeRange, GameModeTeamRange
-from cubeball.reward_functions import GoalAndBallProximity
+from cubeball.reward_functions.goal_reward import GoalReward
 
 
 def sample_random_actions(environment: Cubeball) -> dict:
@@ -15,7 +15,7 @@ def main() -> None:
         "action_repeat": 8,
         "speedup": 1.0,
         "debug_logs": True,
-        "reward_function": GoalAndBallProximity(shaping_cap=0.2),
+        "reward_function": GoalReward,
 
         "game_mode_range": GameModeRange(
             level_size=((10, 4, 15), (20, 4, 30)),
