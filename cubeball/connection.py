@@ -28,14 +28,15 @@ class CubeballConnection:
         show_window: bool,
         action_repeat: int,
         speedup: float,
+        observation_mode: str,
+        disable_goal_animation: bool,
+        disable_ui: bool,
+        disable_goal_nets: bool,
+        disable_cameras: bool,
+        disable_environment: bool,
+        display_fps: bool,
         debug_logs: bool = False,
         seed: int = 0,
-        observation_mode: str = "raycast",
-        disable_goal_animation: Optional[bool] = True,
-        disable_ui: Optional[bool] = True,
-        disable_goal_nets: Optional[bool] = True,
-        disable_cameras: Optional[bool] = True,
-        display_fps: Optional[bool] = False,
     ):
         launch_command = [
             env_path,
@@ -54,6 +55,7 @@ class CubeballConnection:
             ("disable_ui", disable_ui),
             ("disable_goal_nets", disable_goal_nets),
             ("disable_cameras", disable_cameras),
+            ("disable_environment", disable_environment),
             ("display_fps", display_fps),
         ):
             if value is not None:

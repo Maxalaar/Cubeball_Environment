@@ -22,6 +22,7 @@ def main() -> None:
         "disable_ui": False,
         "disable_goal_nets": True,
         "disable_cameras": False,
+        "disable_environment": False,
         "display_fps": False,
 
         "reward_function": GoalReward,
