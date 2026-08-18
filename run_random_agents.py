@@ -17,6 +17,13 @@ def main() -> None:
         "debug_logs": True,
         # "observation_mode": "raycast",
         "observation_mode": "token",
+
+        "disable_goal_animation": False,
+        "disable_ui": False,
+        "disable_goal_nets": True,
+        "disable_cameras": False,
+        "display_fps": False,
+
         "reward_function": GoalReward,
 
         "game_mode_range": GameModeRange(

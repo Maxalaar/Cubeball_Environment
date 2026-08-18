@@ -4,6 +4,7 @@ import json
 import signal
 import socket
 import subprocess
+from typing import Optional
 
 MAJOR_VERSION = "0"
 MINOR_VERSION = "8"
@@ -30,6 +31,11 @@ class CubeballConnection:
         debug_logs: bool = False,
         seed: int = 0,
         observation_mode: str = "raycast",
+        disable_goal_animation: Optional[bool] = True,
+        disable_ui: Optional[bool] = True,
+        disable_goal_nets: Optional[bool] = True,
+        disable_cameras: Optional[bool] = True,
+        display_fps: Optional[bool] = False,
     ):
         launch_command = [
             env_path,
@@ -40,6 +46,19 @@ class CubeballConnection:
             f"--debug_logs={'true' if debug_logs else 'false'}",
             f"--observation_mode={observation_mode}",
         ]
+        # None means "don't pass anything, let Godot's own SettingsManager default
+        # (mode-dependent) decide" -- unlike the flags above, these have no single
+        # sensible default to always send, so only forward the ones the caller set.
+        for name, value in (
+            ("disable_goal_animation", disable_goal_animation),
+            ("disable_ui", disable_ui),
+            ("disable_goal_nets", disable_goal_nets),
+            ("disable_cameras", disable_cameras),
+            ("display_fps", display_fps),
+        ):
+            if value is not None:
+                launch_command.append(f"--{name}={'true' if value else 'false'}")
+
         if not show_window:
             launch_command += ["--disable-render-loop", "--headless"]
 
