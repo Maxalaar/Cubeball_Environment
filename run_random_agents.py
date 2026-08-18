@@ -15,6 +15,8 @@ def main() -> None:
         "action_repeat": 8,
         "speedup": 1.0,
         "debug_logs": True,
+        # "observation_mode": "raycast",
+        "observation_mode": "token",
         "reward_function": GoalReward,
 
         "game_mode_range": GameModeRange(
@@ -55,7 +57,7 @@ def main() -> None:
 
             while not done:
                 actions = sample_random_actions(environment)
-                _, _, dones, _, _ = environment.step(actions)
+                observation, _, dones, _, _ = environment.step(actions)
                 done = all(dones.values())
     except KeyboardInterrupt:
         pass

@@ -16,7 +16,11 @@ def build_observation_space(schema: dict) -> gym.spaces.Dict:
 
     for key, value in schema.items():
         if value["space"] == "continuous":
-            spaces_by_key[key] = gym.spaces.Box(low=-1.0, high=1.0, shape=(value["size"],), dtype=np.float32)
+            size = value["size"]
+            shape = tuple(size) if isinstance(size, (list, tuple)) else (size,)
+            spaces_by_key[key] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=shape, dtype=np.float32)
+        elif value["space"] == "binary":
+            spaces_by_key[key] = gym.spaces.MultiBinary(value["size"])
         elif value["space"] == "discrete":
             spaces_by_key[key] = gym.spaces.Discrete(value["size"])
         else:
@@ -59,6 +63,7 @@ class Cubeball(MultiAgentEnv):
             action_repeat=environment_configuration["action_repeat"],
             speedup=environment_configuration["speedup"],
             debug_logs=environment_configuration.get("debug_logs", False),
+            observation_mode=environment_configuration.get("observation_mode", "raycast"),
         )
 
         spaces_reply = self.connection.get_spaces(self.game_mode_range.max_game_mode().to_config())
@@ -139,6 +144,8 @@ class Cubeball(MultiAgentEnv):
         for key, sub_space in space.spaces.items():
             if isinstance(sub_space, gym.spaces.Box):
                 casted[key] = np.array(observation[key], dtype=sub_space.dtype)
+            elif isinstance(sub_space, gym.spaces.MultiBinary):
+                casted[key] = np.array(observation[key], dtype=np.int8)
             elif isinstance(sub_space, gym.spaces.Discrete):
                 casted[key] = int(observation[key])
             else:

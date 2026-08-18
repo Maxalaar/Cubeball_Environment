@@ -29,6 +29,7 @@ class CubeballConnection:
         speedup: float,
         debug_logs: bool = False,
         seed: int = 0,
+        observation_mode: str = "raycast",
     ):
         launch_command = [
             env_path,
@@ -37,6 +38,7 @@ class CubeballConnection:
             f"--action_repeat={action_repeat}",
             f"--speedup={speedup}",
             f"--debug_logs={'true' if debug_logs else 'false'}",
+            f"--observation_mode={observation_mode}",
         ]
         if not show_window:
             launch_command += ["--disable-render-loop", "--headless"]
