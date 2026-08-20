@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 from cubeball.environment import GAME_EXECUTABLE_PATH
 from utilities import default_environment_configuration, run_environment, run_steps
 
-WARMUP_STEPS = 200
-BENCHMARK_STEPS = 2000
+WARMUP_STEPS = 1_000
+BENCHMARK_STEPS = 10_000
 PRINT_EVERY = 200
 
 RESULTS_ROOT = pathlib.Path(__file__).parent / "benchmark_results"
@@ -163,7 +163,7 @@ def main() -> None:
         elapsed_seconds = time.perf_counter() - start_time
 
         steps_per_second = BENCHMARK_STEPS / elapsed_seconds
-        simulated_ticks_per_second = steps_per_second * environment_configuration["action_repeat"]
+        simulated_ticks_per_second = steps_per_second * environment.resolved_configuration["action_repeat"]
         interval_values = [entry["steps_per_second"] for entry in time_series]
 
         results = {
@@ -191,7 +191,7 @@ def main() -> None:
         save_results_plot(run_directory / "results.png", time_series, steps_per_second)
 
         with open(run_directory / "environment_configuration.yaml", "w") as file:
-            yaml.safe_dump(serialize_environment_configuration(environment_configuration), file, sort_keys=False)
+            yaml.safe_dump(serialize_environment_configuration(environment.resolved_configuration), file, sort_keys=False)
 
         with open(run_directory / "system_info.yaml", "w") as file:
             yaml.safe_dump(system_info, file, sort_keys=False)

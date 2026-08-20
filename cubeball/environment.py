@@ -56,20 +56,43 @@ class Cubeball(MultiAgentEnv):
         self.reward_function: RewardFunction = reward_function_class()
         self._rng = np.random.default_rng(environment_configuration.get("seed"))
 
+        # Every value actually used to launch Godot, with defaults resolved -- callers (e.g.
+        # the benchmark script) read this instead of the input dict to record what actually ran,
+        # since environment_configuration itself may omit anything left at its default.
+        self.resolved_configuration = {
+            "game_mode_range": self.game_mode_range,
+            "reward_function": reward_function_class,
+            "seed": environment_configuration.get("seed"),
+            "show_window": environment_configuration.get("show_window", False),
+            "action_repeat": environment_configuration.get("action_repeat", 8),
+            "speedup": environment_configuration.get("speedup", 20),
+            "debug_logs": environment_configuration.get("debug_logs", False),
+            "observation_mode": environment_configuration.get("observation_mode", "raycast"),
+            "disable_post_goal_duration": environment_configuration.get("disable_post_goal_duration", True),
+            "disable_ui": environment_configuration.get("disable_ui", True),
+            "disable_goal_nets": environment_configuration.get("disable_goal_nets", True),
+            "disable_cameras": environment_configuration.get("disable_cameras", True),
+            "disable_environment": environment_configuration.get("disable_environment", True),
+            "display_fps": environment_configuration.get("display_fps", False),
+            "use_real_godot_done": environment_configuration.get("use_real_godot_done", True),
+            "reward_scale_factor": environment_configuration.get("reward_scale_factor", 1.0),
+            "max_step": environment_configuration.get("max_step", None),
+        }
+
         self.connection = CubeballConnection(
             env_path=GAME_EXECUTABLE_PATH,
             port=get_free_port(),
-            show_window=environment_configuration.get("show_window", False),
-            action_repeat=environment_configuration.get("action_repeat", 8),
-            speedup=environment_configuration.get("speedup", 20),
-            debug_logs=environment_configuration.get("debug_logs", False),
-            observation_mode=environment_configuration.get("observation_mode", "raycast"),
-            disable_post_goal_duration=environment_configuration.get("disable_post_goal_duration", True),
-            disable_ui=environment_configuration.get("disable_ui", True),
-            disable_goal_nets=environment_configuration.get("disable_goal_nets", True),
-            disable_cameras=environment_configuration.get("disable_cameras", True),
-            disable_environment=environment_configuration.get("disable_environment", True),
-            display_fps=environment_configuration.get("display_fps", False),
+            show_window=self.resolved_configuration["show_window"],
+            action_repeat=self.resolved_configuration["action_repeat"],
+            speedup=self.resolved_configuration["speedup"],
+            debug_logs=self.resolved_configuration["debug_logs"],
+            observation_mode=self.resolved_configuration["observation_mode"],
+            disable_post_goal_duration=self.resolved_configuration["disable_post_goal_duration"],
+            disable_ui=self.resolved_configuration["disable_ui"],
+            disable_goal_nets=self.resolved_configuration["disable_goal_nets"],
+            disable_cameras=self.resolved_configuration["disable_cameras"],
+            disable_environment=self.resolved_configuration["disable_environment"],
+            display_fps=self.resolved_configuration["display_fps"],
         )
 
         spaces_reply = self.connection.get_spaces(self.game_mode_range.max_game_mode().to_config())
@@ -89,10 +112,10 @@ class Cubeball(MultiAgentEnv):
         self._current_game_mode = self.game_mode_range.sample(self._rng)
         self._pending_reset_reply = self.connection.reset(self._current_game_mode.to_config())
 
-        self.use_real_godot_done: float = environment_configuration.get('use_real_godot_done', True)
-        self.reward_scale_factor: float = environment_configuration.get('reward_scale_factor', 1.0)
+        self.use_real_godot_done: float = self.resolved_configuration["use_real_godot_done"]
+        self.reward_scale_factor: float = self.resolved_configuration["reward_scale_factor"]
         self.current_step: Optional[int] = None
-        self.max_step: Optional[int] = environment_configuration.get("max_step", None)
+        self.max_step: Optional[int] = self.resolved_configuration["max_step"]
 
         self.observation_space = gym.spaces.Dict(self.observation_spaces)
         self.action_space = gym.spaces.Dict(self.action_spaces)
