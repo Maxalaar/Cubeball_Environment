@@ -1,6 +1,7 @@
 import contextlib
 
 from cubeball import Cubeball, GameModeRange, GameModeTeamRange
+from cubeball.environment import ENVIRONMENT_CONFIGURATION_KEYS
 from cubeball.reward_functions.goal_reward import GoalReward
 
 DEFAULT_GAME_MODE_RANGE = GameModeRange(
@@ -19,6 +20,10 @@ DEFAULT_GAME_MODE_RANGE = GameModeRange(
 
 
 def default_environment_configuration(**overrides) -> dict:
+    unknown_keys = overrides.keys() - ENVIRONMENT_CONFIGURATION_KEYS
+    if unknown_keys:
+        raise ValueError(f"Unknown environment configuration key(s): {sorted(unknown_keys)}")
+
     configuration = {
         "reward_function": GoalReward,
         "game_mode_range": DEFAULT_GAME_MODE_RANGE,

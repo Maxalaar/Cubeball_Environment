@@ -1,0 +1,6 @@
+speedup: 40
+disable_post_goal_duration: false
+disable_ui: false
+disable_goal_nets: false
+disable_cameras: false
+disable_environment: false
