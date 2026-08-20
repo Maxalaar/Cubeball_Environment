@@ -64,7 +64,7 @@ class Cubeball(MultiAgentEnv):
             speedup=environment_configuration["speedup"],
             debug_logs=environment_configuration.get("debug_logs", False),
             observation_mode=environment_configuration.get("observation_mode", "raycast"),
-            disable_goal_animation=environment_configuration.get("disable_goal_animation", True),
+            disable_post_goal_duration=environment_configuration.get("disable_post_goal_duration", True),
             disable_ui=environment_configuration.get("disable_ui", True),
             disable_goal_nets=environment_configuration.get("disable_goal_nets", True),
             disable_cameras=environment_configuration.get("disable_cameras", True),

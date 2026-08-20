@@ -29,7 +29,7 @@ class CubeballConnection:
         action_repeat: int,
         speedup: float,
         observation_mode: str,
-        disable_goal_animation: bool,
+        disable_post_goal_duration: bool,
         disable_ui: bool,
         disable_goal_nets: bool,
         disable_cameras: bool,
@@ -51,7 +51,7 @@ class CubeballConnection:
         # (mode-dependent) decide" -- unlike the flags above, these have no single
         # sensible default to always send, so only forward the ones the caller set.
         for name, value in (
-            ("disable_goal_animation", disable_goal_animation),
+            ("disable_post_goal_duration", disable_post_goal_duration),
             ("disable_ui", disable_ui),
             ("disable_goal_nets", disable_goal_nets),
             ("disable_cameras", disable_cameras),

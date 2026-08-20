@@ -18,7 +18,7 @@ def main() -> None:
         # "observation_mode": "raycast",
         "observation_mode": "token",
 
-        # "disable_goal_animation": False,
+        # "disable_post_goal_duration": False,
         # "disable_ui": False,
         # "disable_goal_nets": True,
         "disable_cameras": False,
