@@ -1,15 +1,18 @@
 import os
+import warnings
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 import gymnasium as gym
 import numpy as np
 from ray.rllib import MultiAgentEnv
+from ray.rllib.env.env_context import EnvContext
 
 from cubeball.game_mode import GameModeRange
 from cubeball.connection import CubeballConnection, get_free_port
 from cubeball.reward_functions import RewardFunction
 
 GAME_EXECUTABLE_PATH = str(Path(__file__).parent.parent / "cubeball_godot" / "Cubeball.x86_64")
+EnvironmentConfiguration = Union[dict, EnvContext]
 
 # Every key Cubeball actually reads from environment_configuration -- used to validate
 # overrides upfront (e.g. in utilities.default_environment_configuration) so a typo'd key
@@ -55,13 +58,21 @@ def build_observation_space(schema: dict) -> gym.spaces.Dict:
     return gym.spaces.Dict(spaces_by_key)
 
 
-def compute_cpu_affinity(environment_configuration: dict) -> Optional[list]:
+def compute_cpu_affinity(environment_configuration: EnvironmentConfiguration) -> Optional[list]:
     cores_per_instance = environment_configuration.get("cpu_affinity_cores_per_instance")
     if cores_per_instance is None:
         return None
 
+    if not isinstance(environment_configuration, EnvContext):
+        warnings.warn(
+            "`cpu_affinity_cores_per_instance` is set but `environment_configuration` is a "
+            "plain dict, not an RLlib `EnvContext` -- there's no `worker_index` to tell "
+            "concurrent instances apart, so no CPU affinity will be applied."
+        )
+        return None
+
     total_cores = os.cpu_count() or 1
-    worker_index = getattr(environment_configuration, "worker_index", 0)
+    worker_index = environment_configuration.worker_index
     num_slots = max(total_cores // cores_per_instance, 1)
     slot = worker_index % num_slots
     start = (slot * cores_per_instance) % total_cores
@@ -83,7 +94,7 @@ def build_action_space(schema: dict) -> gym.spaces.Dict:
 
 
 class Cubeball(MultiAgentEnv):
-    def __init__(self, environment_configuration: Optional[dict] = None):
+    def __init__(self, environment_configuration: Optional[EnvironmentConfiguration] = None):
         super().__init__()
 
         if environment_configuration.get('render_mode', None) is not None:
