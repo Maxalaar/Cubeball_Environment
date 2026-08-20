@@ -28,9 +28,9 @@ def _preexec_fn(cpu_affinity: Optional[Sequence[int]]):
 
 class CubeballConnection:
     # A small, self-contained client for the training wire protocol implemented by
-    # addons/godot_rl_agents/python_synchronizer.gd in the Godot project: JSON messages,
-    # each prefixed by its length as 4 little-endian bytes. Godot doesn't build anything
-    # until it receives a message carrying a config payload ("get_spaces" or "reset").
+    # scripts/agents/training_manager.gd in the Godot project: JSON messages, each prefixed
+    # by its length as 4 little-endian bytes. Godot doesn't build anything until it receives
+    # a message carrying a config payload ("get_spaces" or "reset").
     def __init__(
         self,
         env_path: str,
