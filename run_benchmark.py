@@ -135,7 +135,7 @@ def load_configuration_overrides(config_path: pathlib.Path) -> dict:
 
 
 def find_configuration_files(configs_path: pathlib.Path) -> list[pathlib.Path]:
-    config_paths = sorted(configs_path.glob("*.yaml")) + sorted(configs_path.glob("*.yml"))
+    config_paths = sorted(set(configs_path.rglob("*.yaml")) | set(configs_path.rglob("*.yml")))
     if not config_paths:
         raise SystemExit(f"No .yaml/.yml configuration files found in {configs_path}")
     return config_paths
@@ -229,12 +229,12 @@ def main() -> None:
         yaml.safe_dump(collect_system_info(), file, sort_keys=False)
 
     for config_path in config_paths:
-        configuration_name = config_path.stem
-        print(f"\n=== {configuration_name} ({config_path.name}) ===")
+        relative_configuration_path = config_path.relative_to(arguments.configs_path).with_suffix("")
+        print(f"\n=== {relative_configuration_path} ({config_path.name}) ===")
 
         overrides = load_configuration_overrides(config_path)
         environment_configuration = default_environment_configuration(**overrides)
-        benchmark_configuration(environment_configuration, run_directory / configuration_name)
+        benchmark_configuration(environment_configuration, run_directory / relative_configuration_path)
 
     print(f"\nAll benchmark runs saved to {run_directory}")
 
