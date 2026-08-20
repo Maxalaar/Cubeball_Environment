@@ -38,6 +38,7 @@ class CubeballConnection:
         show_window: bool,
         action_repeat: int,
         speedup: float,
+        frame_stack_size: int,
         observation_mode: str,
         disable_post_goal_duration: bool,
         disable_ui: bool,
@@ -55,6 +56,7 @@ class CubeballConnection:
             f"--env_seed={seed}",
             f"--action_repeat={action_repeat}",
             f"--speedup={speedup}",
+            f"--frame_stack_size={frame_stack_size}",
             f"--debug_logs={'true' if debug_logs else 'false'}",
             f"--observation_mode={observation_mode}",
         ]

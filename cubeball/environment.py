@@ -37,6 +37,7 @@ ENVIRONMENT_CONFIGURATION_KEYS = frozenset({
     "reward_scale_factor",
     "max_step",
     "cpu_affinity_cores_per_instance",
+    "frame_stack_size",
 })
 
 
@@ -106,6 +107,16 @@ class Cubeball(MultiAgentEnv):
         self.reward_function: RewardFunction = reward_function_class()
         self._rng = np.random.default_rng(environment_configuration.get("seed"))
 
+        if environment_configuration.get("observation_mode", "raycast") == "token" \
+                and "frame_stack_size" in environment_configuration:
+            warnings.warn(
+                "`frame_stack_size` has no effect with `observation_mode='token'` -- token "
+                "observations already carry per-entity velocity, and proper temporal stacking "
+                "for a token sequence would need positional encoding / a sequence architecture "
+                "rather than a flat frame stack (not implemented). The value you passed is "
+                "ignored by Godot."
+            )
+
         # Every value actually used to launch Godot, with defaults resolved -- callers (e.g.
         # the benchmark script) read this instead of the input dict to record what actually ran,
         # since environment_configuration itself may omit anything left at its default.
@@ -128,6 +139,7 @@ class Cubeball(MultiAgentEnv):
             "reward_scale_factor": environment_configuration.get("reward_scale_factor", 1.0),
             "max_step": environment_configuration.get("max_step", None),
             "cpu_affinity_cores_per_instance": environment_configuration.get("cpu_affinity_cores_per_instance"),
+            "frame_stack_size": environment_configuration.get("frame_stack_size", 4),
         }
 
         self.connection = CubeballConnection(
@@ -144,6 +156,7 @@ class Cubeball(MultiAgentEnv):
             disable_cameras=self.resolved_configuration["disable_cameras"],
             disable_environment=self.resolved_configuration["disable_environment"],
             display_fps=self.resolved_configuration["display_fps"],
+            frame_stack_size=self.resolved_configuration["frame_stack_size"],
             cpu_affinity=compute_cpu_affinity(environment_configuration),
         )
 

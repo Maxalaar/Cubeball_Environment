@@ -10,6 +10,7 @@ def main() -> None:
         disable_goal_nets=False,
         disable_cameras=False,
         disable_environment=False,
+        debug_logs=True,
     )
 
     with run_environment(environment_configuration) as environment:
