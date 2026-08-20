@@ -1,10 +1,11 @@
 import atexit
 import ctypes
 import json
+import os
 import signal
 import socket
 import subprocess
-from typing import Optional
+from typing import Optional, Sequence
 
 MAJOR_VERSION = "0"
 MINOR_VERSION = "8"
@@ -14,6 +15,15 @@ _PR_SET_PDEATHSIG = 1
 
 def _die_with_parent():
     ctypes.CDLL("libc.so.6", use_errno=True).prctl(_PR_SET_PDEATHSIG, signal.SIGKILL)
+
+
+def _preexec_fn(cpu_affinity: Optional[Sequence[int]]):
+    def run():
+        _die_with_parent()
+        if cpu_affinity is not None:
+            os.sched_setaffinity(0, set(cpu_affinity))
+
+    return run
 
 
 class CubeballConnection:
@@ -37,6 +47,7 @@ class CubeballConnection:
         display_fps: bool,
         debug_logs: bool = False,
         seed: int = 0,
+        cpu_affinity: Optional[Sequence[int]] = None,
     ):
         launch_command = [
             env_path,
@@ -64,7 +75,9 @@ class CubeballConnection:
         if not show_window:
             launch_command += ["--disable-render-loop", "--headless"]
 
-        self.process = subprocess.Popen(launch_command, start_new_session=True, preexec_fn=_die_with_parent)
+        self.process = subprocess.Popen(
+            launch_command, start_new_session=True, preexec_fn=_preexec_fn(cpu_affinity)
+        )
         atexit.register(self.close)
 
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

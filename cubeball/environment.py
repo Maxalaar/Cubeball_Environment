@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 import gymnasium as gym
@@ -9,6 +10,31 @@ from cubeball.connection import CubeballConnection, get_free_port
 from cubeball.reward_functions import RewardFunction
 
 GAME_EXECUTABLE_PATH = str(Path(__file__).parent.parent / "cubeball_godot" / "Cubeball.x86_64")
+
+# Every key Cubeball actually reads from environment_configuration -- used to validate
+# overrides upfront (e.g. in utilities.default_environment_configuration) so a typo'd key
+# fails loudly instead of being silently ignored.
+ENVIRONMENT_CONFIGURATION_KEYS = frozenset({
+    "game_mode_range",
+    "reward_function",
+    "seed",
+    "render_mode",
+    "show_window",
+    "action_repeat",
+    "speedup",
+    "debug_logs",
+    "observation_mode",
+    "disable_post_goal_duration",
+    "disable_ui",
+    "disable_goal_nets",
+    "disable_cameras",
+    "disable_environment",
+    "display_fps",
+    "use_real_godot_done",
+    "reward_scale_factor",
+    "max_step",
+    "cpu_affinity_cores_per_instance",
+})
 
 
 def build_observation_space(schema: dict) -> gym.spaces.Dict:
@@ -27,6 +53,19 @@ def build_observation_space(schema: dict) -> gym.spaces.Dict:
             raise ValueError(f"Unsupported observation space kind: {value['space']!r}")
 
     return gym.spaces.Dict(spaces_by_key)
+
+
+def compute_cpu_affinity(environment_configuration: dict) -> Optional[list]:
+    cores_per_instance = environment_configuration.get("cpu_affinity_cores_per_instance")
+    if cores_per_instance is None:
+        return None
+
+    total_cores = os.cpu_count() or 1
+    worker_index = getattr(environment_configuration, "worker_index", 0)
+    num_slots = max(total_cores // cores_per_instance, 1)
+    slot = worker_index % num_slots
+    start = (slot * cores_per_instance) % total_cores
+    return [(start + offset) % total_cores for offset in range(cores_per_instance)]
 
 
 def build_action_space(schema: dict) -> gym.spaces.Dict:
@@ -77,6 +116,7 @@ class Cubeball(MultiAgentEnv):
             "use_real_godot_done": environment_configuration.get("use_real_godot_done", True),
             "reward_scale_factor": environment_configuration.get("reward_scale_factor", 1.0),
             "max_step": environment_configuration.get("max_step", None),
+            "cpu_affinity_cores_per_instance": environment_configuration.get("cpu_affinity_cores_per_instance"),
         }
 
         self.connection = CubeballConnection(
@@ -93,6 +133,7 @@ class Cubeball(MultiAgentEnv):
             disable_cameras=self.resolved_configuration["disable_cameras"],
             disable_environment=self.resolved_configuration["disable_environment"],
             display_fps=self.resolved_configuration["display_fps"],
+            cpu_affinity=compute_cpu_affinity(environment_configuration),
         )
 
         spaces_reply = self.connection.get_spaces(self.game_mode_range.max_game_mode().to_config())
