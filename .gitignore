@@ -14,6 +14,9 @@ dist/
 # Ray / RLlib run outputs
 ray_results/
 
+# Benchmark run outputs
+benchmark_results/
+
 # Editors / OS
 .vscode/
 .idea/
