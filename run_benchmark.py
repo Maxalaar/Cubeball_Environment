@@ -1,3 +1,4 @@
+import argparse
 import dataclasses
 import datetime
 import hashlib
@@ -114,6 +115,32 @@ def serialize_environment_configuration(environment_configuration: dict) -> dict
     return serialized
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Benchmark the Cubeball environment once per configuration file found in a directory."
+    )
+    parser.add_argument(
+        "configs_path",
+        type=pathlib.Path,
+        help="Directory containing one YAML file per configuration to benchmark. Each file's keys "
+             "override default_environment_configuration() (e.g. observation_mode: token); an empty "
+             "file benchmarks the base configuration as-is.",
+    )
+    return parser.parse_args()
+
+
+def load_configuration_overrides(config_path: pathlib.Path) -> dict:
+    with open(config_path) as file:
+        return yaml.safe_load(file) or {}
+
+
+def find_configuration_files(configs_path: pathlib.Path) -> list[pathlib.Path]:
+    config_paths = sorted(configs_path.glob("*.yaml")) + sorted(configs_path.glob("*.yml"))
+    if not config_paths:
+        raise SystemExit(f"No .yaml/.yml configuration files found in {configs_path}")
+    return config_paths
+
+
 def save_results_plot(output_path: pathlib.Path, time_series: list[dict], average_steps_per_second: float) -> None:
     steps_done = [entry["steps_done"] for entry in time_series]
     steps_per_second = [entry["steps_per_second"] for entry in time_series]
@@ -131,13 +158,8 @@ def save_results_plot(output_path: pathlib.Path, time_series: list[dict], averag
     plt.close(figure)
 
 
-def main() -> None:
-    environment_configuration = default_environment_configuration()
-
-    run_directory = RESULTS_ROOT / datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    run_directory.mkdir(parents=True, exist_ok=True)
-
-    system_info = collect_system_info()
+def benchmark_configuration(environment_configuration: dict, output_directory: pathlib.Path) -> None:
+    output_directory.mkdir(parents=True, exist_ok=True)
 
     with run_environment(environment_configuration) as environment:
         print(f"Warming up ({WARMUP_STEPS} steps)...")
@@ -186,17 +208,35 @@ def main() -> None:
         print(f"  Steps/s:              {steps_per_second:.1f}")
         print(f"  Simulated physics ticks/s (steps/s * action_repeat): {simulated_ticks_per_second:.1f}")
 
-        with open(run_directory / "results.yaml", "w") as file:
+        with open(output_directory / "results.yaml", "w") as file:
             yaml.safe_dump(results, file, sort_keys=False)
-        save_results_plot(run_directory / "results.png", time_series, steps_per_second)
+        save_results_plot(output_directory / "results.png", time_series, steps_per_second)
 
-        with open(run_directory / "environment_configuration.yaml", "w") as file:
+        with open(output_directory / "environment_configuration.yaml", "w") as file:
             yaml.safe_dump(serialize_environment_configuration(environment.resolved_configuration), file, sort_keys=False)
 
-        with open(run_directory / "system_info.yaml", "w") as file:
-            yaml.safe_dump(system_info, file, sort_keys=False)
+        print(f"\nSaved benchmark run to {output_directory}")
 
-        print(f"\nSaved benchmark run to {run_directory}")
+
+def main() -> None:
+    arguments = parse_arguments()
+    config_paths = find_configuration_files(arguments.configs_path)
+
+    run_directory = RESULTS_ROOT / datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    run_directory.mkdir(parents=True, exist_ok=True)
+
+    with open(run_directory / "system_info.yaml", "w") as file:
+        yaml.safe_dump(collect_system_info(), file, sort_keys=False)
+
+    for config_path in config_paths:
+        configuration_name = config_path.stem
+        print(f"\n=== {configuration_name} ({config_path.name}) ===")
+
+        overrides = load_configuration_overrides(config_path)
+        environment_configuration = default_environment_configuration(**overrides)
+        benchmark_configuration(environment_configuration, run_directory / configuration_name)
+
+    print(f"\nAll benchmark runs saved to {run_directory}")
 
 
 if __name__ == "__main__":
