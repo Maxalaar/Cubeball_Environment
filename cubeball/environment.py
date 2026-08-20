@@ -59,9 +59,9 @@ class Cubeball(MultiAgentEnv):
         self.connection = CubeballConnection(
             env_path=GAME_EXECUTABLE_PATH,
             port=get_free_port(),
-            show_window=environment_configuration["show_window"],
-            action_repeat=environment_configuration["action_repeat"],
-            speedup=environment_configuration["speedup"],
+            show_window=environment_configuration.get("show_window", False),
+            action_repeat=environment_configuration.get("action_repeat", 8),
+            speedup=environment_configuration.get("speedup", 20),
             debug_logs=environment_configuration.get("debug_logs", False),
             observation_mode=environment_configuration.get("observation_mode", "raycast"),
             disable_post_goal_duration=environment_configuration.get("disable_post_goal_duration", True),

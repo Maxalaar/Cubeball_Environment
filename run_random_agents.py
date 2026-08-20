@@ -3,8 +3,13 @@ from utilities import default_environment_configuration, run_environment, run_st
 
 def main() -> None:
     environment_configuration = default_environment_configuration(
+        show_window=True,
         speedup=1.0,
-        debug_logs=True,
+        disable_post_goal_duration=False,
+        disable_ui=False,
+        disable_goal_nets=False,
+        disable_cameras=False,
+        disable_environment=False,
     )
 
     with run_environment(environment_configuration) as environment:

@@ -132,13 +132,7 @@ def save_results_plot(output_path: pathlib.Path, time_series: list[dict], averag
 
 
 def main() -> None:
-    environment_configuration = default_environment_configuration(
-        # Uncapped from real-time (speedup scales Engine.time_scale) so the benchmark
-        # measures actual hardware throughput instead of being capped at 1x real-time.
-        speedup=20.0,
-        debug_logs=False,
-        disable_environment=False,
-    )
+    environment_configuration = default_environment_configuration()
 
     run_directory = RESULTS_ROOT / datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
     run_directory.mkdir(parents=True, exist_ok=True)

@@ -20,11 +20,6 @@ DEFAULT_GAME_MODE_RANGE = GameModeRange(
 
 def default_environment_configuration(**overrides) -> dict:
     configuration = {
-        "show_window": True,
-        "action_repeat": 8,
-        "observation_mode": "token",
-        "disable_cameras": False,
-        "display_fps": True,
         "reward_function": GoalReward,
         "game_mode_range": DEFAULT_GAME_MODE_RANGE,
     }
