@@ -13,7 +13,7 @@ def main() -> None:
     environment_configuration = {
         "show_window": True,
         "action_repeat": 8,
-        "speedup": 2.0,
+        "speedup": 1.0,
         "debug_logs": True,
         # "observation_mode": "raycast",
         "observation_mode": "token",
@@ -23,7 +23,7 @@ def main() -> None:
         # "disable_goal_nets": True,
         "disable_cameras": False,
         "disable_environment": False,
-        # "display_fps": False,
+        "display_fps": True,
 
         "reward_function": GoalReward,
 
