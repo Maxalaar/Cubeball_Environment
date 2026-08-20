@@ -1,78 +1,20 @@
-from cubeball import Cubeball, GameModeRange, GameModeTeamRange
-from cubeball.reward_functions.goal_reward import GoalReward
-
-
-def sample_random_actions(environment: Cubeball) -> dict:
-    return {
-        agent_name: environment.action_spaces[agent_name].sample()
-        for agent_name in environment.agents
-    }
+from utilities import default_environment_configuration, run_environment, run_steps
 
 
 def main() -> None:
-    environment_configuration = {
-        "show_window": True,
-        "action_repeat": 8,
-        "speedup": 1.0,
-        "debug_logs": True,
-        # "observation_mode": "raycast",
-        "observation_mode": "token",
+    environment_configuration = default_environment_configuration(
+        speedup=1.0,
+        debug_logs=True,
+    )
 
-        # "disable_post_goal_duration": False,
-        # "disable_ui": False,
-        # "disable_goal_nets": True,
-        "disable_cameras": False,
-        # "disable_environment": False,
-        "display_fps": True,
-
-        "reward_function": GoalReward,
-
-        "game_mode_range": GameModeRange(
-            level_size=((10, 4, 15), (20, 4, 30)),
-            goal_size=((3, 4, 5), (3, 4, 5)),
-            cuboid_field_margin=((0, 0, 0), (0, 0, 0)),
-            ball_number=(1, 2),
-            obstacle_number=(0, 0),
-            max_duration_seconds=(10, 20),
-            max_goal=(1, 1),
-            team_list=[
-                GameModeTeamRange(players_number=(1, 3)),
-                GameModeTeamRange(players_number=(1, 3)),
-            ],
-        ),
-
-        # "game_mode_range": GameModeRange(
-        #     level_size=((10, 4, 15), (20, 4, 30)),
-        #     goal_size=((3, 4, 5), (3, 4, 5)),
-        #     ball_number=(1, 1),
-        #     obstacle_number=(0, 0),
-        #     max_duration_seconds=(10, 20),
-        #     max_goal=(1, 1),
-        #     team_list=[
-        #         GameModeTeamRange(players_number=(1, 1)),
-        #         GameModeTeamRange(players_number=(1, 1)),
-        #     ],
-        # ),
-    }
-
-    environment = Cubeball(environment_configuration)
-
-    try:
-        while True:
-            environment.reset()
-            print("Active agents this episode:", environment.agents)
-            done = False
-
-            while not done:
-                actions = sample_random_actions(environment)
-                observation, _, dones, _, _ = environment.step(actions)
-                done = all(dones.values())
-    except KeyboardInterrupt:
-        pass
-    except ConnectionError:
-        print("Godot window closed, exiting.")
-    finally:
-        environment.close()
+    with run_environment(environment_configuration) as environment:
+        try:
+            run_steps(
+                environment,
+                on_episode_start=lambda: print("Active agents this episode:", environment.agents),
+            )
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import hashlib
 import importlib.metadata
+import os
 import pathlib
 import platform
 import re
@@ -11,40 +12,14 @@ import time
 import yaml
 import matplotlib.pyplot as plt
 
-from cubeball import Cubeball, GameModeRange, GameModeTeamRange
 from cubeball.environment import GAME_EXECUTABLE_PATH
-from cubeball.reward_functions.goal_reward import GoalReward
+from utilities import default_environment_configuration, run_environment, run_steps
 
 WARMUP_STEPS = 200
 BENCHMARK_STEPS = 2000
 PRINT_EVERY = 200
 
 RESULTS_ROOT = pathlib.Path(__file__).parent / "benchmark_results"
-
-
-def sample_random_actions(environment: Cubeball) -> dict:
-    return {
-        agent_name: environment.action_spaces[agent_name].sample()
-        for agent_name in environment.agents
-    }
-
-
-def run_steps(environment: Cubeball, num_steps: int, on_step=None) -> int:
-    episodes_completed = 0
-    environment.reset()
-
-    for _ in range(num_steps):
-        actions = sample_random_actions(environment)
-        _, _, dones, _, _ = environment.step(actions)
-
-        if all(dones.values()):
-            episodes_completed += 1
-            environment.reset()
-
-        if on_step is not None:
-            on_step()
-
-    return episodes_completed
 
 
 def get_godot_version() -> str:
@@ -92,12 +67,7 @@ def get_cpu_info() -> str:
         model_name = match.group(1).strip() if match else platform.processor() or "unknown"
     except OSError:
         model_name = platform.processor() or "unknown"
-    return f"{model_name} ({os_cpu_count()} logical cores)"
-
-
-def os_cpu_count() -> int:
-    import os
-    return os.cpu_count() or 0
+    return f"{model_name} ({os.cpu_count() or 0} logical cores)"
 
 
 def get_ram_info() -> str:
@@ -162,44 +132,20 @@ def save_results_plot(output_path: pathlib.Path, time_series: list[dict], averag
 
 
 def main() -> None:
-    environment_configuration = {
-        "show_window": True,
-        "action_repeat": 8,
+    environment_configuration = default_environment_configuration(
         # Uncapped from real-time (speedup scales Engine.time_scale) so the benchmark
         # measures actual hardware throughput instead of being capped at 1x real-time.
-        "speedup": 20.0,
-        "debug_logs": False,
-        "observation_mode": "token",
-
-        "disable_cameras": False,
-        "disable_environment": False,
-        "display_fps": True,
-
-        "reward_function": GoalReward,
-
-        "game_mode_range": GameModeRange(
-            level_size=((10, 4, 15), (20, 4, 30)),
-            goal_size=((3, 4, 5), (3, 4, 5)),
-            cuboid_field_margin=((0, 0, 0), (0, 0, 0)),
-            ball_number=(1, 2),
-            obstacle_number=(0, 0),
-            max_duration_seconds=(10, 20),
-            max_goal=(1, 1),
-            team_list=[
-                GameModeTeamRange(players_number=(1, 3)),
-                GameModeTeamRange(players_number=(1, 3)),
-            ],
-        ),
-    }
+        speedup=20.0,
+        debug_logs=False,
+        disable_environment=False,
+    )
 
     run_directory = RESULTS_ROOT / datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
     run_directory.mkdir(parents=True, exist_ok=True)
 
     system_info = collect_system_info()
 
-    environment = Cubeball(environment_configuration)
-
-    try:
+    with run_environment(environment_configuration) as environment:
         print(f"Warming up ({WARMUP_STEPS} steps)...")
         run_steps(environment, WARMUP_STEPS)
 
@@ -257,10 +203,6 @@ def main() -> None:
             yaml.safe_dump(system_info, file, sort_keys=False)
 
         print(f"\nSaved benchmark run to {run_directory}")
-    except ConnectionError:
-        print("Godot window closed, exiting.")
-    finally:
-        environment.close()
 
 
 if __name__ == "__main__":
