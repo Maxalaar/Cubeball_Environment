@@ -138,7 +138,7 @@ class Cubeball(MultiAgentEnv):
             "use_real_godot_done": environment_configuration.get("use_real_godot_done", True),
             "reward_scale_factor": environment_configuration.get("reward_scale_factor", 1.0),
             "max_step": environment_configuration.get("max_step", None),
-            "cpu_affinity_cores_per_instance": environment_configuration.get("cpu_affinity_cores_per_instance"),
+            "cpu_affinity_cores_per_instance": environment_configuration.get("cpu_affinity_cores_per_instance", 2),
             "frame_stack_size": environment_configuration.get("frame_stack_size", 4),
         }
 
