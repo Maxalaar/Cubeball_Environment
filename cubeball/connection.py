@@ -52,6 +52,7 @@ class CubeballConnection:
     ):
         launch_command = [
             env_path,
+            "--training",
             f"--port={port}",
             f"--env_seed={seed}",
             f"--action_repeat={action_repeat}",
